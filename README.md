@@ -13,7 +13,7 @@ Microservice for integration with RetailCRM API via FastAPI.
 ### 1. Clone the repository
 ```bash
 git clone git@github.com:hul-masha/RetailCRM-FastAPI-Integration.git
-cd retailcrm-fastapi
+cd RetailCRM-FastAPI-Integration/
 ```
 ### 2. Configure environment variables
 ```bash
@@ -27,6 +27,14 @@ RETAILCRM_API_KEY=your_api_key_here
 ### 3. Run with Docker Compose
 ```bash
 docker-compose up --build
+```
+#### You can also run Docker Compose in a detached mode
+```bash
+docker-compose up -d --build
+```
+#### Stop and remove Docker containers, networks
+```bash
+docker-compose down
 ```
 #### The application will be available at: http://localhost:8000
 ### 4. Verify the installation
