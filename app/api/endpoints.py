@@ -2,32 +2,30 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from datetime import date
 
-from app.models import (
-    CustomerCreate, Response,
-    OrderCreate,
-    PaymentCreate,
-    ApiResponse
-)
+from app.models import CustomerCreate, Response, OrderCreate, PaymentCreate, ApiResponse
 from app.services.retailcrm_service import retailcrm_service
 from app.utils.helpers import (
-    format_date_for_api, prepare_customer_data,
-    prepare_order_data, prepare_payment_data
+    format_date_for_api,
+    prepare_customer_data,
+    prepare_order_data,
+    prepare_payment_data,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["RetailCRM Integration"])
 
 
-# 1. Получение списка клиентов
 @router.get("/customers", response_model=ApiResponse)
 def get_customers(
-        name: Optional[str] = Query(None, description="Фильтр по имени клиента"),
-        email: Optional[str] = Query(None, description="Фильтр по email"),
-        created_from: Optional[date] = Query(None, description="Фильтр по дате регистрации"),
-        created_to: Optional[date] = Query(None, description="Фильтр по дате регистрации"),
-        limit: int = Query(20, ge=1, le=100, description="Количество записей"),
-        page: int = Query(1, ge=1, description="Номер страницы")
+    name: Optional[str] = Query(None, description="Filter by customer name"),
+    email: Optional[str] = Query(None, description="Filter by customer email"),
+    created_from: Optional[date] = Query(
+        None, description="Filter by date of creation"
+    ),
+    created_to: Optional[date] = Query(None, description="Filter by date of creation"),
+    limit: int = Query(20, ge=1, le=100, description="Amount of lines"),
+    page: int = Query(1, ge=1, description="Page number"),
 ):
-    """Получение списка клиентов из RetailCRM с фильтрацией"""
+    """List of customers from RetailCRM with filters"""
     try:
         created_from_str = format_date_for_api(created_from)
         created_to_str = format_date_for_api(created_to)
@@ -38,30 +36,29 @@ def get_customers(
             created_from=created_from_str,
             created_to=created_to_str,
             limit=limit,
-            page=page
+            page=page,
         )
 
         if response.get("success"):
             customers = response.get("customers", [])
             return {
                 "success": True,
-                "message": f"Найдено {len(customers)} клиентов",
+                "message": f"Found {len(customers)} customers",
                 "data": {"customers": customers},
             }
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Ошибка RetailCRM: {response.get('errorMsg', 'Unknown error')}"
+                detail=f"Error RetailCRM: {response.get('errorMsg', 'Unknown error')}",
             )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 2. Создание нового клиента
 @router.post("/customers", response_model=Response)
 def create_customer(customer: CustomerCreate):
-    """Создание нового клиента в RetailCRM"""
+    """New customer creation in RetailCRM"""
     try:
         customer_data = prepare_customer_data(customer.model_dump())
 
@@ -72,51 +69,46 @@ def create_customer(customer: CustomerCreate):
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Ошибка RetailCRM: {response.get('errorMsg', 'Unknown error')}"
+                detail=f"Error RetailCRM: {response.get('errorMsg', 'Unknown error')}",
             )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 3. Получение списка заказов клиента
 @router.get("/customers/{customer_id}/orders", response_model=ApiResponse)
 def get_customer_orders(
-        customer_id: int,
-        limit: int = Query(20, ge=1, le=100, description="Количество записей"),
-        page: int = Query(1, ge=1, description="Номер страницы")
+    customer_id: int,
+    limit: int = Query(20, ge=1, le=100, description="Amount of lines"),
+    page: int = Query(1, ge=1, description="Page number"),
 ):
-    """Получение списка заказов клиента по его ID"""
+    """List of orders by customer ID"""
     try:
         response = retailcrm_service.get_customer_orders(
-            customer_id=customer_id,
-            limit=limit,
-            page=page
+            customer_id=customer_id, limit=limit, page=page
         )
 
         if response.get("success"):
             orders = response.get("orders", [])
             return ApiResponse(
                 success=True,
-                message=f"Найдено {len(orders)} заказов",
-                data={"orders": orders}
+                message=f"Found {len(orders)} orders",
+                data={"orders": orders},
             )
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Ошибка RetailCRM: {response.get('errorMsg', 'Unknown error')}"
+                detail=f"Error RetailCRM: {response.get('errorMsg', 'Unknown error')}",
             )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 4. Создание нового заказа
 @router.post("/orders", response_model=Response)
 def create_order(order: OrderCreate):
-    """Создание нового заказа в RetailCRM"""
+    """New order creation in RetailCRM"""
     try:
-        # Подготовка данных заказа
         order_data = prepare_order_data(order.model_dump())
 
         response = retailcrm_service.create_order(order_data)
@@ -126,23 +118,22 @@ def create_order(order: OrderCreate):
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Ошибка RetailCRM: {response.get('errorMsg', 'Unknown error')}"
+                detail=f"Error RetailCRM: {response.get('errorMsg', 'Unknown error')}",
             )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 5. Создание и привязка платежа к заказу
 @router.post("/payments", response_model=Response)
 def create_payment(payment: PaymentCreate):
-    """Создание платежа и привязка его к заказу"""
+    """Payment creation with order attachment"""
     try:
         payment_data = prepare_payment_data(
             order_id=payment.order_id,
             amount=payment.amount,
             payment_type=payment.payment_type,
-            comment=payment.comment
+            comment=payment.comment,
         )
 
         response = retailcrm_service.create_payment(payment_data)
@@ -152,7 +143,7 @@ def create_payment(payment: PaymentCreate):
         else:
             raise HTTPException(
                 status_code=400,
-                detail=f"Ошибка RetailCRM: {response.get('errorMsg', 'Unknown error')}"
+                detail=f"Error RetailCRM: {response.get('errorMsg', 'Unknown error')}",
             )
 
     except Exception as e:

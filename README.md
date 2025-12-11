@@ -26,7 +26,7 @@ RETAILCRM_API_KEY=your_api_key_here
 ```
 ### 3. Run with Docker Compose
 ```bash
-docker-compose up -d --build
+docker-compose up --build
 ```
 #### The application will be available at: http://localhost:8000
 ### 4. Verify the installation
